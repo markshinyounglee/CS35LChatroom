@@ -1,30 +1,29 @@
-import { useEffect } from "react";
-
-export const useClient = ({apiKey, userData, tokenOrProvider}) => {
+// define and export `useClient` hook somewhere in your codebase
+// or keep it in the `src/App.js`, up to you
+// we'll use src/hooks/useClient.js path for this example
+export const useClient = ({ apiKey, userData, tokenOrProvider }) => {
     const [chatClient, setChatClient] = useState(null);
 
     useEffect(() => {
-        const client = new StreamChat(apiKey); // create client using api key
+    const client = new StreamChat(apiKey);
+    // prevents application from setting stale client (user changed, for example)
+    let didUserConnectInterrupt = false;
 
-        let didUserConnectInterrupt = false;
+    const connectionPromise = client.connectUser(userData, tokenOrProvider).then(() => {
+    if (!didUserConnectInterrupt) setChatClient(client);
+    });
 
-        const connectionPromise = client.connectUser(userData, tokenOrProvider)
-        .then(() => 
-        {
-            if (!didUserConnectInterrupt) setChatClient(client);
+    return () => {
+    didUserConnectInterrupt = true;
+    setChatClient(null);
+    // wait for connection to finish before initiating closing sequence
+    connectionPromise
+        .then(() => client.disconnectUser())
+        .then(() => {
+        console.log('connection closed');
         });
-
-        return () => {
-            didUserConnectInterrupt = true;
-            setChatClient(null); 
-
-            connectionPromise
-            .then(() => client.disconnectUser())
-            .then(() => {
-                console.log("Connection closed");
-            });
-        };
+    };
     }, [apiKey, userData.id, tokenOrProvider]);
 
     return chatClient;
-}
+};
